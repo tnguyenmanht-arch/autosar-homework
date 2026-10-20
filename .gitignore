@@ -1,0 +1,14 @@
+# Sản phẩm build
+*.elf
+*.hex
+*.o
+*.map
+build/
+
+# Code và script do goil sinh ra trong hw2-trampoline-blink
+# - thư mục mang tên file .oil (blink.oil -> blink/): đổi dòng này nếu đổi tên file .oil
+hw2-trampoline-blink/blink/
+hw2-trampoline-blink/make.py
+hw2-trampoline-blink/build.py
+# - file ELF mang tên APP_NAME trong .oil (không có đuôi): đổi dòng này nếu đổi APP_NAME
+hw2-trampoline-blink/trampuinoBlink
