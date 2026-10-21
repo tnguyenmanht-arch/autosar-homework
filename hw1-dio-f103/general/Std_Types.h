@@ -1,12 +1,13 @@
 /*
  * Std_Types.h — Kiểu và hằng số chuẩn dùng chung cho mọi module AUTOSAR (SWS Standard Types)
  *
- * Module BSW (ví dụ Dio) include file này, không include trực tiếp Platform_Types.h.
+ * Module BSW (ví dụ Dio) include file này, không include trực tiếp Platform_Types.h hay Compiler.h.
  */
 #ifndef STD_TYPES_H
 #define STD_TYPES_H
 
 #include "Platform_Types.h"
+#include "Compiler.h"
 
 /* ---- Phiên bản: module khác kiểm tra các số này để bảo đảm cùng bản AUTOSAR ---- */
 #define STD_AR_RELEASE_MAJOR_VERSION     4U

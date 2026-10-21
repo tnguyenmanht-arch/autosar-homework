@@ -11,7 +11,9 @@ hw1-dio-f103/
 ├── app/main.c                    chương trình tạm: clock_init() rồi lặp vô hạn
 ├── general/                      header AUTOSAR dùng chung
 │   ├── Platform_Types.h          uint8/16/32/64, sint*, boolean, TRUE/FALSE, CPU_TYPE...
+│   ├── Compiler.h                bản giản lược: NULL_PTR, INLINE, LOCAL_INLINE
 │   └── Std_Types.h               Std_ReturnType, E_OK/E_NOT_OK, STD_HIGH/LOW, STD_ON/OFF, Std_VersionInfoType
+│                                 (include Platform_Types.h và Compiler.h)
 ├── drivers/mcu/stm32f103/        ┐
 │   ├── clock_f103.c / .h         │ CHÉP NGUYÊN từ can-ecu-network (xem bảng dưới)
 │   ├── STM32F103C8_FLASH.ld      │

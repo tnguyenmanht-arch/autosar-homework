@@ -26,7 +26,11 @@ Phiên cmd đã chạy bản `env.bat` cũ (chưa có phần ARM) thì mở cmd 
 - Board: Yahboom YB-MSV01, STM32F103C8T6 (Flash 64 KB, RAM 20 KB), HSE 8 MHz, nạp qua ST-Link SWD.
 - Build: `arm-none-eabi-gcc` + Makefile, bare-metal, KHÔNG HAL. Mục tiêu 0 cảnh báo với `-Wall -Wextra`.
 - LED trên board: **PC13, tích cực mức thấp** (ghi `STD_LOW` thì LED sáng, `STD_HIGH` thì tắt).
-- **Chân cấm dùng: PA9, PA10, PA11, PA12, PB8, PB9.** Không cấu hình, không ghi các chân này trong code mẫu hay test.
+- **Chân cấm dùng: PA9, PA10, PA11, PA12, PA13, PA14, PA15, PB2, PB3, PB4, PB8, PB9.**
+  Không cấu hình, không ghi các chân này trong code mẫu hay test.
+  - PA13, PA14: SWD (SWDIO, SWCLK). Đổi sang GPIO thì ST-Link mất kết nối.
+  - PA15, PB3, PB4: JTAG (JTDI, JTDO, NJTRST), mặc định bật sau reset.
+  - PB2: BOOT1, có điện trở kéo xuống trên board.
 - Các file chép từ can-ecu-network (CMSIS, startup, linker, `clock_f103.c/.h`, `stm32f103.mk`) giữ nguyên từng byte.
   Nguồn ghi trong `hw1-dio-f103/README.md`. Muốn đổi gì thì sửa `hw1-dio-f103/Makefile`.
 
