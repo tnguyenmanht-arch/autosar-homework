@@ -229,8 +229,8 @@ Nạp `build/dio_f103.elf` (2,86 KB, xoá trang 0–2), verify đạt, reset ph�
 | GPIOA CRL / CRH | — | `0x22224448` / `0x88844444` | `0x22224448` / `0x88844444` | PA0 = 8, PA4–7 = 2; PA13–15 giữ cấu hình debug | ✅ |
 | GPIOA IDR bit 0 (PA0) | — | 0 (`0xDFA0`) | 1 (`0xDFAF`) | LOW khi nối, HIGH khi tháo | ✅ |
 
-**8/8 TC ĐẠT.** Thời gian lấy theo `%TIME%` của cmd (độ phân giải 10 ms). LED nháy được suy ra từ ODR bit 13 và `g_tc3_flips`,
-không quan sát bằng mắt qua CLI. Bit `0xA000` trong ODR cổng A: xem giải thích ở mục đọc kết quả.
+**8/8 TC ĐẠT.** Thời gian lấy theo `%TIME%` của cmd (độ phân giải 10 ms). LED PC13 nháy: CLI thấy qua ODR bit 13 và `g_tc3_flips`,
+Thắng xác nhận thêm bằng mắt trên board. Bit `0xA000` trong ODR cổng A: xem giải thích ở mục đọc kết quả.
 
 ## Giải thích từng hàm
 
