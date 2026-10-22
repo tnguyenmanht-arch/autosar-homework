@@ -35,16 +35,22 @@ Phiên cmd đã chạy bản `env.bat` cũ (chưa có phần ARM) thì mở cmd 
   Nguồn ghi trong `hw1-dio-f103/README.md`. Muốn đổi gì thì sửa `hw1-dio-f103/Makefile`.
 
 Quy tắc:
-- **Không viết Dio.h/Dio.c, Port, Det thay Thắng.** Chỉ được dựng khung build, file khuôn mẫu (`Std_Types.h`, `Platform_Types.h`...),
-  giải thích, chỉ lỗi. Muốn sửa code của Thắng thì nói chỗ sai, để Thắng tự sửa.
-- **Nạp (`make flash`) phải được Thắng xác nhận từng lần.** Build, `make -n flash` thì cứ chạy.
+- **HW1 do Claude Code viết theo quyết định của Thắng (22/10/2026)**: Dio.c, Dio_Cfg, Port, Det, main.c (TC1–TC8), tests/host.
+  Riêng `drivers/dio/Dio.h` do Thắng viết: giữ nguyên, nếu bắt buộc phải sửa thì nêu rõ lý do.
+  (Quy tắc cũ "không viết Dio/Port/Det thay Thắng" đã bỏ.)
+- **Nạp (`make flash`) phải được Thắng xác nhận từng lần.** Build, `make -n flash`, `make -C tests/host` thì cứ chạy.
+- Thử trên board: có mục KHÔNG ĐẠT thì dừng, chẩn đoán bằng biến phụ, không tự sửa code.
 
 ```bat
 cd hw1-dio-f103
 make            REM build\dio_f103.elf/.hex/.bin + in kích thước
 make clean
 make flash      REM chỉ khi Thắng đồng ý: STM32_Programmer_CLI -c port=SWD -w build/dio_f103.elf -v -rst
+make -C tests/host   REM chạy thử Dio trên PC với GPIO giả lập (g++ MinGW), không liên quan firmware
 ```
+
+Đọc kết quả khi chip đang chạy: `STM32_Programmer_CLI -c port=SWD mode=HOTPLUG -r8 ...` (bắt buộc HOTPLUG,
+địa chỉ biến lấy bằng `arm-none-eabi-nm`, xem `hw1-dio-f103/README.md`).
 
 ## HW2 — Trampoline blink trên Arduino Uno
 

@@ -23,6 +23,7 @@ hw1-dio-f103/
 │       ├── STM32F103C8_FLASH.ld  │
 │       └── stm32f103.mk          ┘
 ├── services/det/Det.h, Det.c     Det tối giản: lưu lỗi cuối + đếm số lỗi
+├── tests/host/                   chạy thử Dio/Port/Det trên PC với GPIO giả lập (g++), tách khỏi build firmware
 ├── general/
 │   ├── Platform_Types.h          uint8/16/32/64, sint*, boolean, TRUE/FALSE, CPU_TYPE...
 │   ├── Compiler.h                bản giản lược: NULL_PTR, INLINE, LOCAL_INLINE
@@ -97,12 +98,12 @@ TC1, TC4–TC8 chạy một lần sau khởi động (theo thứ tự TC1, TC4, 
 | TC2 | `Dio_ReadChannel` | Đọc PA0 liên tục vào `g_tc2_level` | Đã thấy cả HIGH (hở) lẫn LOW (nối PA0–GND). **Cần thao tác tay**: chưa nối dây thì `g_tc[1]` = 0 | `g_tc2_level`, `g_tc2_seen_high`, `g_tc2_seen_low` |
 | TC3 | `Dio_FlipChannel` | Đảo LED mỗi 500 ms (LED nháy 1 Hz) | Mức trả về khớp ODR bit 13 sau ≥ 2 lần đảo; sai 1 lần là KHÔNG ĐẠT | `g_tc3_flips` (tăng 2/s), `g_tc3_errors` (0), `g_tc3_level` |
 | TC4 | `Dio_WriteChannel` trên chân input | Ghi LOW vào PA0 | ODR bit 0 vẫn 1, CRL của PA0 vẫn `0x8`, đọc PA0 vẫn HIGH | `g_tc4_level` (1) |
-| TC5 | `Dio_WritePort` | Ghi cổng A = `0x0050` (bit 0 = 0) | ODR bit 7..4 = `0101`; mọi bit ODR khác (gồm PA0) không đổi; PA0 vẫn input pull-up | `g_tc5_odr_before` (`0x0001`), `g_tc5_odr_after` (`0x0051`) |
-| TC6 | `Dio_WriteChannelGroup` | Ghi nhóm Test = `0b1010` | ODR bit 7..4 = `1010` (`0xA0`); bit ngoài nhóm không đổi | `g_tc6_odr_before` (`0x0051`), `g_tc6_odr_after` (`0x00A1`), `g_tc6_read` (`0xA`, không tính điểm) |
+| TC5 | `Dio_WritePort` | Ghi cổng A = `0x0050` (bit 0 = 0) | ODR bit 7..4 = `0101`; mọi bit ODR khác (gồm PA0) không đổi; PA0 vẫn input pull-up | `g_tc5_odr_before` (`0xA001`), `g_tc5_odr_after` (`0xA051`) |
+| TC6 | `Dio_WriteChannelGroup` | Ghi nhóm Test = `0b1010` | ODR bit 7..4 = `1010` (`0xA0`); bit ngoài nhóm không đổi | `g_tc6_odr_before` (`0xA051`), `g_tc6_odr_after` (`0xA0A1`), `g_tc6_read` (`0xA`, không tính điểm) |
 | TC7 | DET | 5 lần gọi sai, xem bảng dưới | Mỗi lần Det tăng đúng 1 lỗi, đúng SID và mã lỗi; hàm đọc trả 0; chương trình chạy tiếp | `g_tc7_fail_mask` (0), `Det_ErrorCount` (5), `Det_LastError` |
 | TC8 | `Dio_GetVersionInfo` | Gọi với con trỏ hợp lệ | 5 trường = 29, 120, 1, 0, 0; Det không tăng | `g_tc8_info` |
 
-Các bước của TC7 (bit k trong `g_tc7_fail_mask` = 1 nghĩa là bước k+1 không đạt):
+Các bước của TC7 chạy **đúng thứ tự từ trên xuống** trong `tc7_det()` (bit k trong `g_tc7_fail_mask` = 1 nghĩa là bước k+1 không đạt):
 
 | Bit | Lời gọi | SID mong đợi | Mã lỗi mong đợi |
 |---|---|---|---|
@@ -112,7 +113,23 @@ Các bước của TC7 (bit k trong `g_tc7_fail_mask` = 1 nghĩa là bước k+1
 | 0x08 | `Dio_ReadChannelGroup(&bản_sao_nhóm_Test)`: nội dung giống, địa chỉ không nằm trong bảng | `0x04` | `0x1F` INVALID_GROUP |
 | 0x10 | `Dio_GetVersionInfo(NULL_PTR)` | `0x12` | `0x20` PARAM_POINTER |
 
-Sau TC7, `Det_LastError` = `{ModuleId 120, InstanceId 0, ApiId 0x12, ErrorId 0x20}` (lỗi của bước 5).
+Sau TC7, `Det_LastError` = `{ModuleId 120, InstanceId 0, ApiId 0x12, ErrorId 0x20}`: lỗi cuối là của bước 5
+`GetVersionInfo(NULL_PTR)`, vì bước nhóm sao chép (INVALID_GROUP, `{120, 0, 0x04, 0x1F}`) là bước 4, chạy trước.
+TC8 chạy sau TC7 nhưng gọi với con trỏ hợp lệ nên không sinh lỗi, `Det_LastError` và `Det_ErrorCount` (= 5) giữ nguyên.
+
+## Chạy thử trên PC trước khi nạp (`tests/host/`)
+
+```bat
+make -C tests/host          REM biên dịch bằng g++ (MinGW) rồi chạy; mã thoát 0 = đạt hết
+make -C tests/host clean
+```
+
+`tests/host/stm32f1xx.h` thay header CMSIS bằng thanh ghi giả lập: ghi BSRR thì ODR đổi ngay, đọc IDR thì ra mức chân
+tính từ CRL/CRH, ODR và "dây nối ngoài". `sim.cpp` dùng nguyên `Dio.c`, `Port.c`, `Det.c`, các file cấu hình và các hàm `tc*()`
+của `app/main.c` (không sửa dòng nào), chạy Port_Init → TC1, TC4–TC8 → TC3 ×3 → TC2 (hở rồi nối PA0–GND), sau đó kiểm thêm:
+gọi sai không chạm thanh ghi, mỗi hàm ghi đúng một lần BSRR, bit ngoài nhóm không đổi, Flip chân input...
+Bản giả lập không thay được thử trên board: không kiểm clock, SysTick, thời gian hay điện thật trên chân.
+Build firmware (`make` ở `hw1-dio-f103/`) không đụng tới thư mục này.
 
 ## Nạp và đọc kết quả bằng CLI
 
@@ -121,7 +138,7 @@ Chỉ nạp khi đã xác nhận. Nạp: `make flash` (hoặc lệnh `STM32_Prog
 Đọc khi chip đang chạy: **BẮT BUỘC `mode=HOTPLUG`** (mode mặc định dừng core, đọc ra số sai):
 
 ```bat
-STM32_Programmer_CLI -c port=SWD mode=HOTPLUG -r8 0x20000050 8 -r32 0x20000058 8 -r8 0x20000060 6 -r8 0x20000020 0x30 -r32 0x20000000 4
+STM32_Programmer_CLI -c port=SWD mode=HOTPLUG -r8 0x20000050 8 -r32 0x20000058 8 -r8 0x20000060 6 -r8 0x20000020 0x30 -r32 0x20000000 4 -r32 0x40010800 0x10
 ```
 
 Địa chỉ của bản build ngày 22/10/2026. **Sửa code thì địa chỉ có thể đổi**: lấy lại bằng
@@ -136,10 +153,10 @@ arm-none-eabi-nm -S -n build/dio_f103.elf | findstr "g_ Det_ SystemCoreClock"
 | 0x20000020 | 8 | `g_tc8_info`: vendorID (2 B), moduleID (2 B), major, minor, patch, đệm | `1D 00 78 00 01 00 00 xx` |
 | 0x20000028 | 1 | `g_tc7_fail_mask` | 0 |
 | 0x2000002A | 2 | `g_tc6_read` | `0x000A` |
-| 0x2000002C | 4 | `g_tc6_odr_after` | `0x000000A1` |
-| 0x20000030 | 4 | `g_tc6_odr_before` | `0x00000051` |
-| 0x20000034 | 4 | `g_tc5_odr_after` | `0x00000051` |
-| 0x20000038 | 4 | `g_tc5_odr_before` | `0x00000001` |
+| 0x2000002C | 4 | `g_tc6_odr_after` | `0x0000A0A1` |
+| 0x20000030 | 4 | `g_tc6_odr_before` | `0x0000A051` |
+| 0x20000034 | 4 | `g_tc5_odr_after` | `0x0000A051` |
+| 0x20000038 | 4 | `g_tc5_odr_before` | `0x0000A001` |
 | 0x2000003C | 1 | `g_tc4_level` | 1 |
 | 0x2000003D | 1 | `g_tc3_level` | 0 hoặc 1, đổi mỗi 500 ms |
 | 0x20000040 | 4 | `g_tc3_errors` | 0 |
@@ -154,8 +171,14 @@ arm-none-eabi-nm -S -n build/dio_f103.elf | findstr "g_ Det_ SystemCoreClock"
 | 0x20000058 | 4 | `g_tick_ms` | tăng ≈ 1000/s |
 | 0x2000005C | 4 | `Det_ErrorCount` | 5 |
 | 0x20000060 | 6 | `Det_LastError`: ModuleId (2 B), InstanceId, ApiId, ErrorId, đệm | `78 00 00 12 20 xx` |
+| 0x40010800 | 16 | GPIOA: CRL, CRH, IDR, ODR (địa chỉ phần cứng, không đổi khi sửa code) | CRL `0x22224448`, CRH `0x88844444`, ODR `0x0000A0A1` |
 
 Số nhiều byte lưu little-endian: đọc `-r8` thì byte thấp đứng trước (ví dụ ModuleId 120 = `78 00`).
+
+**Vì sao ODR cổng A có sẵn `0xA000`:** sau reset, PA13 (SWDIO), PA14 (SWCLK), PA15 (JTDI) là chân debug, cấu hình
+input pull (GPIOA_CRH = `0x88844444`, nibble 13–15 = `8`), với PA13 và PA15 pull-up (ODR bit 13, 15 = 1), PA14 pull-down (bit 14 = 0).
+Các biến `g_tc5_odr_*`, `g_tc6_odr_*` vì thế mang thêm `0xA000`. Bit này giữ nguyên qua `Dio_WritePort(A, 0x0050)` dù
+`Level` có bit 13, 15 = 0: chứng tỏ trên chip thật Dio không ghi vào chân input (nếu ghi thì PA13 thành pull-down, có thể mất SWD).
 
 Trình tự đọc gợi ý:
 1. Nạp, chờ ≥ 2 s, đọc lần A (PA0 để hở): `g_tc` = `01 00 01 01 01 01 01 01`, LED nháy 1 Hz.
@@ -175,6 +198,39 @@ Trình tự đọc gợi ý:
 | TC6 = 2, bit ngoài `0xF0` đổi | WriteChannelGroup ghi ra ngoài mask |
 | `g_tc6_read` ≠ `0xA` | Có mạch ngoài kéo PA4–PA7 (xem sơ đồ board) |
 | TC7 = 2 | Xem `g_tc7_fail_mask` để biết bước nào sai, rồi so `Det_LastError` |
+
+## Kết quả trên board (22/10/2026)
+
+Board Yahboom YB-MSV01: ST-Link V2 (FW V2J46S7) nối SWD, không cắm USB-C, FPC và hàng chân để trống, PA0 hở lúc reset.
+`STM32_Programmer_CLI` nhận chip: Device ID `0x410` (STM32F101/F102/F103 medium-density), Flash 64 KB, Cortex-M3, điện áp 3,33 V.
+Nạp `build/dio_f103.elf` (2,86 KB, xoá trang 0–2), verify đạt, reset phần mềm lúc 10:55:36.
+Đọc 3 lần bằng `mode=HOTPLUG`, không reset giữa các lần:
+
+- Lần A, 10:55:47.70: PA0 hở.
+- Lần B, 11:22:59.56: PA0 nối GND bằng dây.
+- Lần C, 11:23:46.09: đã tháo dây.
+
+| TC | `g_tc` A / B / C | Biến chẩn đoán (A / B / C) | Mong đợi | Đạt? |
+|---|---|---|---|---|
+| TC1 WriteChannel | 01 / 01 / 01 | `g_tc1_odr_low` = 0, `g_tc1_odr_high` = 1 | 0, 1 | ✅ |
+| TC2 ReadChannel (nút) | 00 / 01 / 01 | `g_tc2_level` 1 / 0 / 1; `seen_high` 1/1/1, `seen_low` 0/1/1 | HIGH khi hở, LOW khi nối GND | ✅ |
+| TC3 FlipChannel | 01 / 01 / 01 | `g_tc3_flips` 22 / 3286 / 3379; `g_tc3_errors` 0 / 0 / 0 | 2 lần/s, 0 lỗi | ✅ (`g_tick_ms`/500 = 22,6 / 3286,4 / 3379,5) |
+| TC4 WriteChannel chân input | 01 / 01 / 01 | `g_tc4_level` = 1 | 1 | ✅ |
+| TC5 WritePort | 01 / 01 / 01 | ODR `0xA001` → `0xA051` | bit 7..4 = 0101, bit khác giữ nguyên | ✅ |
+| TC6 WriteChannelGroup | 01 / 01 / 01 | ODR `0xA051` → `0xA0A1`; `g_tc6_read` = `0xA` | bit 7..4 = 1010, bit khác giữ nguyên | ✅ |
+| TC7 DET | 01 / 01 / 01 | `g_tc7_fail_mask` = 0; `Det_ErrorCount` = 5; `Det_LastError` = {120, 0, 0x12, 0x20} | 0; 5; {120, 0, 0x12, 0x20} | ✅ |
+| TC8 GetVersionInfo | 01 / 01 / 01 | `g_tc8_info` = 29, 120, 1.0.0 | 29, 120, 1.0.0 | ✅ |
+
+| Kiểm chung | A | B | C | Mong đợi | Đạt? |
+|---|---|---|---|---|---|
+| `g_clk_err` | 0 | 0 | 0 | 0 | ✅ |
+| `SystemCoreClock` | 72000000 | 72000000 | 72000000 | 72000000 | ✅ |
+| `g_tick_ms` | 11319 | 1643209 | 1689734 | ≈ 1000/s | ✅ A→B: 1631890 ms / 1631,86 s = 1000,02 /s; B→C: 46525 ms / 46,53 s = 999,9 /s |
+| GPIOA CRL / CRH | — | `0x22224448` / `0x88844444` | `0x22224448` / `0x88844444` | PA0 = 8, PA4–7 = 2; PA13–15 giữ cấu hình debug | ✅ |
+| GPIOA IDR bit 0 (PA0) | — | 0 (`0xDFA0`) | 1 (`0xDFAF`) | LOW khi nối, HIGH khi tháo | ✅ |
+
+**8/8 TC ĐẠT.** Thời gian lấy theo `%TIME%` của cmd (độ phân giải 10 ms). LED nháy được suy ra từ ODR bit 13 và `g_tc3_flips`,
+không quan sát bằng mắt qua CLI. Bit `0xA000` trong ODR cổng A: xem giải thích ở mục đọc kết quả.
 
 ## Giải thích từng hàm
 
