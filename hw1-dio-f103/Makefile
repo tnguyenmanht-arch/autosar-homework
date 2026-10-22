@@ -11,10 +11,12 @@
 REPO_ROOT := .
 TARGET    := dio_f103
 
-# Thêm Dio.c, Port.c, Det.c vào đây khi viết xong (đặt trong mcal/)
-SRCS := app/main.c
+SRCS := app/main.c \
+        drivers/dio/Dio.c drivers/dio/Dio_Cfg.c \
+        drivers/port/Port.c drivers/port/Port_Cfg.c \
+        services/det/Det.c
 
-INCS := -Igeneral -Iapp
+INCS := -Igeneral -Iapp -Idrivers/dio -Idrivers/port -Iservices/det
 
 include $(REPO_ROOT)/drivers/mcu/stm32f103/stm32f103.mk
 
